@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class TrainService {
@@ -26,7 +27,22 @@ public class TrainService {
         //and route String logic to be taken from the Problem statement.
         //Save the train and return the trainId that is generated from the database.
         //Avoid using the lombok library
-        return null;
+        Train train = new Train();
+        train.setNoOfSeats(trainEntryDto.getNoOfSeats());
+
+        List<Station> list = trainEntryDto.getStationRoute();
+        String route = "";
+
+        for(int i=0;i<list.size();i++){
+            if(i==list.size()-1)
+                route += list.get(i);
+            else
+                route += list.get(i) + ",";
+        }
+        train.setRoute(route);
+
+        train.setDepartureTime(trainEntryDto.getDepartureTime());
+        return trainRepository.save(train).getTrainId();
     }
 
     public Integer calculateAvailableSeats(SeatAvailabilityEntryDto seatAvailabilityEntryDto){
@@ -51,7 +67,19 @@ public class TrainService {
         //  in a happy case we need to find out the number of such people.
 
 
-        return 0;
+        Train train = trainRepository.findById(trainId).get();
+        int totalPeople = 0;
+        List<Ticket> list = train.getBookedTickets();
+
+        for(Ticket ticket:list){
+            if(ticket.getFromStation()==station)
+                totalPeople += ticket.getPassengersList().size();
+        }
+
+        if(totalPeople==0)
+            throw new Exception("Train is not passing from this station");
+        else
+            return totalPeople;
     }
 
     public Integer calculateOldestPersonTravelling(Integer trainId){
@@ -60,7 +88,18 @@ public class TrainService {
         //We need to find out the age of the oldest person that is travelling the train
         //If there are no people travelling in that train you can return 0
 
-        return 0;
+        int oldestPerson = 0;
+        Train train = trainRepository.findById(trainId).get();
+        List<Ticket> list = train.getBookedTickets();
+        for(Ticket ticket:list){
+            List<Passenger> l = ticket.getPassengersList();
+            for(Passenger p:l){
+                if(p.getAge()>=oldestPerson)
+                    oldestPerson = p.getAge();
+            }
+        }
+
+        return oldestPerson;
     }
 
     public List<Integer> trainsBetweenAGivenTime(Station station, LocalTime startTime, LocalTime endTime){
@@ -71,7 +110,25 @@ public class TrainService {
         //in problem statement)
         //You can also assume the seconds and milli seconds value will be 0 in a LocalTime format.
 
-        return null;
+        List<Integer> TrainList = new ArrayList<>();
+        List<Train> trains = trainRepository.findAll();
+        for(Train t:trains){
+            String s = t.getRoute();
+            String[] ans = s.split(",");
+            for(int i=0;i<ans.length;i++){
+                if(Objects.equals(ans[i], String.valueOf(station))){
+                    int startTimeInMin = (startTime.getHour() * 60) + startTime.getMinute();
+                    int lastTimeInMin = (endTime.getHour() * 60) + endTime.getMinute();
+
+
+                    int departureTimeInMin = (t.getDepartureTime().getHour() * 60) + t.getDepartureTime().getMinute();
+                    int reachingTimeInMin  = departureTimeInMin + (i * 60);
+                    if(reachingTimeInMin>=startTimeInMin && reachingTimeInMin<=lastTimeInMin)
+                        TrainList.add(t.getTrainId());
+                }
+            }
+        }
+        return TrainList;
     }
 
 }
